@@ -1,0 +1,88 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Food Item</title>
+    <link rel="stylesheet" href="addproduct.css">
+</head>
+<body>
+    <div class="container">
+        <h2>Add Food Item</h2>
+        <form id="add-food-item-form">
+            <input type="text" id="food-name" placeholder="Food Item Name" required>
+            <input type="number" id="price" placeholder="Price" required>
+            <textarea id="description" placeholder="Description" required></textarea>
+            <input type="file" id="image" accept="image/*" required>
+            <button type="submit">Add Item</button>
+        </form>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.19.1/firebase-app.js";
+        import { getDatabase, ref, push, set } from "https://www.gstatic.com/firebasejs/9.19.1/firebase-database.js";
+        import { getStorage, ref as sref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.19.1/firebase-storage.js";
+        import { getAuth } from "https://www.gstatic.com/firebasejs/9.19.1/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDX2HqfKlRUNNH7dtz4TGKZrXR3qRPVUf8",
+            authDomain: "project-2-cb3a5.firebaseapp.com",
+            databaseURL: "https://project-2-cb3a5-default-rtdb.firebaseio.com",
+            projectId: "project-2-cb3a5",
+            storageBucket: "project-2-cb3a5.appspot.com",
+            messagingSenderId: "451782906210",
+            appId: "1:451782906210:web:3fb0802311fbf227e81c3b"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const storage = getStorage(app);
+        const auth = getAuth(app);
+
+        const form = document.getElementById('add-food-item-form');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const user = auth.currentUser;
+            if (!user) {
+                console.error("User not logged in.");
+                return;
+            }
+
+            const foodName = document.getElementById('food-name').value;
+            const price = document.getElementById('price').value;
+            const description = document.getElementById('description').value;
+            const image = document.getElementById('image').files[0];
+
+            // Upload image to Firebase Storage
+            const storagePath = 'food_images/' + image.name;
+            const storageRef = sref(storage, storagePath);
+
+            try {
+                const snapshot = await uploadBytesResumable(storageRef, image);
+                console.log('Image uploaded successfully.');
+                const downloadURL = await getDownloadURL(snapshot.ref);
+                
+                const adminId = user.uid; // Get the adminId (current user's UID)
+                const foodItemRef = push(ref(db, `food_items/${adminId}`)); // Push the food_item under the current admin's node
+                await set(foodItemRef, {
+                    adminId: adminId, // Include the adminId attribute
+                    foodName: foodName,
+                    price: price,
+                    description: description,
+                    imageURL: downloadURL
+                });
+
+                console.log('Food item details saved successfully.');
+                alert("Product added successfully");
+                form.reset();
+            } catch (error) {
+                console.error('Error uploading image:', error.message);
+                alert('Error uploading image. Please try again.');
+            }
+        });
+    </script>
+</body>
+</html>

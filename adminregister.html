@@ -1,0 +1,89 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Registration</title>
+    <link rel="stylesheet" href="userregister.css">
+</head>
+<body>
+    <div class="container">
+        <h2>Admin Registration</h2>
+        <form id="registration-form">
+            <input type="text" id="fullname" placeholder="Full Name" required>
+            <input type="tel" id="phone" placeholder="Phone Number" required>
+            <input type="text" id="address" placeholder="Address" required>
+            <input type="text" id="service" placeholder="Name of service" required>
+            <input type="email" id="email" placeholder="Email" required>
+            <input type="password" id="password" placeholder="Password" required>
+            <button type="submit" id="register">Register</button>
+        </form>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.19.1/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.19.1/firebase-auth.js";
+        import { getDatabase, ref, set, get, child, query, equalTo } from "https://www.gstatic.com/firebasejs/9.19.1/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDX2HqfKlRUNNH7dtz4TGKZrXR3qRPVUf8",
+            authDomain: "project-2-cb3a5.firebaseapp.com",
+            databaseURL: "https://project-2-cb3a5-default-rtdb.firebaseio.com",
+            projectId: "project-2-cb3a5",
+            storageBucket: "project-2-cb3a5.appspot.com",
+            messagingSenderId: "451782906210",
+            appId: "1:451782906210:web:3fb0802311fbf227e81c3b"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getDatabase(app);
+
+        register.addEventListener("click", function(e){
+            e.preventDefault();
+
+            const fullname = document.getElementById("fullname").value;
+            const phone = document.getElementById("phone").value;
+            const address = document.getElementById("address").value;
+            const service = document.getElementById("service").value
+            const email = document.getElementById("email").value;
+            const password = document.getElementById("password").value;
+
+            // Check if email already exists
+            const emailRef = query(ref(db, 'admins','users'), equalTo(email));
+            get(emailRef).then((snapshot) => {
+                if (snapshot.exists()) {
+                    alert("This email is already in use. Please use a different email.");
+                } else {
+                    // Email does not exist, proceed with registration
+                    createUserWithEmailAndPassword(auth, email, password)
+                        .then((userCredential) => {
+                            const user = userCredential.user;
+                            alert("Registered successfully!");
+                            // Store user data in Realtime Database
+                            set(ref(db, 'admins/'+ user.uid), {
+                                fullname: fullname,
+                                phonenumber: phone,
+                                address: address,
+                                serviceName: service,
+                                email: email,
+                                password: password                                
+                            }).then(() => {
+                                console.log("Data stored successfully.");
+                                window.location.href = "index.html";
+                            }).catch((error) => {
+                                console.error("Error storing user data: ", error);
+                            });
+                        })
+                        .catch((error) => {
+                            alert("Email already exists");
+                        });
+                }
+            }).catch((error) => {
+                console.error("Error checking email existence:", error);
+            });
+        });
+    </script>
+</body>
+</html>

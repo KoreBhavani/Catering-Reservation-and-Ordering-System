@@ -1,0 +1,112 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Orders</title>
+    <link rel="stylesheet" href="vieworder.css">
+</head>
+<body>
+    <h2>Admin Orders</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Order ID</th>
+                <th>User Name</th>
+                <th>User Email</th>
+                <th>Address</th>
+                <th>Phone Number</th>
+                <th>Food Name</th>
+                <th>Quantity</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody id="adminOrders">
+            <!-- Admin orders will be dynamically added here -->
+        </tbody>
+    </table>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.19.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.19.1/firebase-auth.js";
+        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.19.1/firebase-database.js";
+
+        // Initialize Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyDX2HqfKlRUNNH7dtz4TGKZrXR3qRPVUf8",
+            authDomain: "project-2-cb3a5.firebaseapp.com",
+            databaseURL: "https://project-2-cb3a5-default-rtdb.firebaseio.com",
+            projectId: "project-2-cb3a5",
+            storageBucket: "project-2-cb3a5.appspot.com",
+            messagingSenderId: "451782906210",
+            appId: "1:451782906210:web:3fb0802311fbf227e81c3b"
+        };
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const auth = getAuth(app);
+
+        // Function to display orders in the table
+        function displayOrders(orderId, userName, userEmail, address, phoneNumber, foodName, quantity, status) {
+            const tableBody = document.getElementById('adminOrders');
+            const newRow = document.createElement('tr');
+
+            newRow.innerHTML = `
+                <td>${orderId}</td>
+                <td>${userName}</td>
+                <td>${userEmail}</td>
+                <td>${address}</td>
+                <td>${phoneNumber}</td>
+                <td>${foodName}</td>
+                <td>${quantity}</td>
+                <td>${status}</td>
+            `;
+
+            tableBody.appendChild(newRow);
+        }
+
+        // Listen for authentication state changes
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                // User is signed in
+                const adminId = user.uid; // Get the ID of the currently logged-in admin
+                const ordersRef = ref(db, 'orders'); // Reference to your 'orders' node in the database
+
+                // Fetch orders from the database
+                onValue(ordersRef, (snapshot) => {
+                    const orders = snapshot.val();
+                    console.log(orders);
+                    for (let orderId in orders) {
+                        const order = orders[orderId];
+                        for (let itemId in order.items) {
+                            const item = order.items[itemId];
+                            if (item.adminId === adminId) {
+                                const userId = item.userId;
+                                // Reference to 'users' node in the database
+                                const usersRef = ref(db, 'users');
+
+                                // Fetch users from the database
+                                onValue(usersRef, (snapshot) => {
+                                    const users = snapshot.val();
+                                    for (let userIdKey in users) {
+                                        if (userIdKey === userId) {
+                                            // userId matches, retrieve user information
+                                            const userInfo = users[userIdKey];
+                                            // Display user information as per your requirement
+                                            // For example:
+                                            displayOrders(orderId, userInfo.fullname, userInfo.email, userInfo.address, userInfo.phonenumber, item.foodName, item.quantity, order.status);
+                                        }
+                                    }
+                                });
+                            }
+                        }
+                    }
+                });
+            } else {
+                // No user is signed in
+                console.log("No admin is currently logged in.");
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,154 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cart</title>
+    <link rel="stylesheet" href="cart.css">
+</head>
+<body>
+    <h2>Cart Items</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Food Name</th>
+                <th>Price</th>
+                <th>Description</th>
+                <th>Image</th>
+                <th>Quantity</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="cartItems">
+            <!-- Cart items will be dynamically added here -->
+        </tbody>
+    </table>
+    <button id="placeOrderButton">Place Order</button>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.19.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.19.1/firebase-auth.js";
+        import { getDatabase, ref, child, get, set, onValue, push, remove } from "https://www.gstatic.com/firebasejs/9.19.1/firebase-database.js";
+
+        // Initialize Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyDX2HqfKlRUNNH7dtz4TGKZrXR3qRPVUf8",
+            authDomain: "project-2-cb3a5.firebaseapp.com",
+            databaseURL: "https://project-2-cb3a5-default-rtdb.firebaseio.com",
+            projectId: "project-2-cb3a5",
+            storageBucket: "project-2-cb3a5.appspot.com",
+            messagingSenderId: "451782906210",
+            appId: "1:451782906210:web:3fb0802311fbf227e81c3b"
+        };
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        const auth = getAuth(app);
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                const userId = user.uid;
+                const userOrderRef = ref(db, `user_order/${userId}`);
+
+                function displayCartItems(cartItems) {
+                    const cartItemsTable = document.getElementById('cartItems');
+                    cartItemsTable.innerHTML = ''; // Clear previous content
+
+                    Object.entries(cartItems).forEach(([itemId, item]) => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${item.foodName}</td>
+                            <td>${item.price}</td>
+                            <td>${item.description}</td>
+                            <td><img src="${item.imageURL}" alt="${item.foodName}" width="100"></td>
+                            <td>${item.quantity}</td>
+                            <td>
+                                <button onclick="decreaseQuantity('${itemId}', ${item.quantity})">-</button>
+                                <button onclick="increaseQuantity('${itemId}', ${item.quantity})">+</button>
+                            </td>
+                        `;
+                        cartItemsTable.appendChild(row);
+                    });
+                }
+
+                onValue(userOrderRef, (snapshot) => {
+                    const cartItems = snapshot.val();
+                    if (cartItems) {
+                        displayCartItems(cartItems);
+                    } else {
+                        const cartItemsTable = document.getElementById('cartItems');
+                        cartItemsTable.innerHTML = '<tr><td colspan="6">No items in the cart</td></tr>';
+                    }
+                });
+
+                function updateQuantity(itemId, newQuantity) {
+                    const itemRef = ref(db, `user_order/${userId}/${itemId}`);
+                    if (newQuantity === 0) {
+                        // If quantity is zero, remove the item node
+                        remove(itemRef)
+                            .then(() => {
+                                console.log('Item removed successfully');
+                            })
+                            .catch(error => {
+                                console.error('Error removing item:', error);
+                            });
+                    } else {
+                        // If quantity is not zero, update the quantity
+                        update(itemRef, { quantity: newQuantity })
+                            .then(() => {
+                                console.log('Quantity updated successfully');
+                            })
+                            .catch(error => {
+                                console.error('Error updating quantity:', error);
+                            });
+                    }
+                }
+
+                window.decreaseQuantity = (itemId, currentQuantity) => {
+                    if (currentQuantity > 0) {
+                        updateQuantity(itemId, currentQuantity - 1);
+                    }
+                };
+
+                window.increaseQuantity = (itemId, currentQuantity) => {
+                    updateQuantity(itemId, currentQuantity + 1);
+                };  
+
+                const placeOrderButton = document.getElementById("placeOrderButton");
+                placeOrderButton.addEventListener("click", () => {
+                    const orderRef = push(ref(db, "orders"));
+                    onValue(userOrderRef, (snapshot) => {
+                        const cartItems = snapshot.val();
+                        if (cartItems) {
+                            const order = {
+                                userId: userId,
+                                items: cartItems
+                            };
+                            set(orderRef, order)
+                                .then(() => {
+                                    alert('Order placed successfully');
+                                    // Clear the user's cart after placing the order
+                                    remove(userOrderRef)
+                                        .then(() => {
+                                            console.log('Cart cleared successfully');
+                                        })
+                                        .catch(error => {
+                                            console.error('Error clearing cart:', error);
+                                        });
+                                })
+                                .catch((error) => {
+                                    console.error('Error placing order:', error);
+                                });
+                        } else {
+                            console.log('Cart is empty. Cannot place order.');
+                        }
+                    });
+                });
+
+            } else {
+                // Handle case where user is not signed in
+            }
+        });
+    </script>
+</body>
+</html>

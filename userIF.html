@@ -1,0 +1,154 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Interface</title>
+    <link rel="stylesheet" href="userIF.css">
+</head>
+<body>
+    <div class="sidebar">
+        <h2>Menu</h2>
+        <ul>
+            <li><a href="cart.html" id="my-orders">My Orders</a></li>
+            <li><a href="userprofile.html" id="my-profile">My Profile</a></li>
+        </ul>
+        <button id="sign-out">Sign Out</button>
+    </div>
+
+    <div class="content"  id="content">
+        
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.19.1/firebase-database.js"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.19.1/firebase-app.js";
+        import { getAuth, signOut } from "https://www.gstatic.com/firebasejs/9.19.1/firebase-auth.js";
+        import { getDatabase, ref, child, get, set, onValue, push } from "https://www.gstatic.com/firebasejs/9.19.1/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDX2HqfKlRUNNH7dtz4TGKZrXR3qRPVUf8",
+            authDomain: "project-2-cb3a5.firebaseapp.com",
+            databaseURL: "https://project-2-cb3a5-default-rtdb.firebaseio.com",
+            projectId: "project-2-cb3a5",
+            storageBucket: "project-2-cb3a5.appspot.com",
+            messagingSenderId: "451782906210",
+            appId: "1:451782906210:web:3fb0802311fbf227e81c3b"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getDatabase(app);
+
+        function displayFoodItems(foodItems) {
+            const content = document.getElementById('content');
+            content.innerHTML = ''; // Clear previous content
+    
+            if (typeof foodItems === 'object' && foodItems !== null) {
+                Object.keys(foodItems).forEach(adminId => {
+                    const items = foodItems[adminId];
+                    Object.keys(items).forEach(itemId => {
+                        const item = items[itemId];
+                        const { foodName, price, description, imageURL } = item;
+                    
+                        // Create container for each food item
+                        const foodItemDiv = document.createElement('div');
+                        foodItemDiv.classList.add('food-item');
+
+                        // Create image element
+                        const img = document.createElement('img');
+                        img.src = imageURL;
+                        img.alt = foodName;
+
+                        // Create heading for name
+                        const nameHeading = document.createElement('h3');
+                        nameHeading.textContent = foodName;
+
+                        // Create paragraph for price
+                        const pricePara = document.createElement('p');
+                        pricePara.textContent = `Price: ₹${price}`;
+
+                        // Create button for description
+                        const descButton = document.createElement('button');
+                        descButton.textContent = 'Description';
+                        descButton.addEventListener('click', () => {
+                            alert(description); // Show description in an alert for demonstration
+                        });
+
+                        // Create button for adding to cart
+                        const addToCartButton = document.createElement('button');
+                        addToCartButton.textContent = 'Add to Cart';
+                        addToCartButton.addEventListener('click', () => {
+                            const user = auth.currentUser;
+                            
+                            if (user) {
+                                const userId = user.uid;
+                                const userOrderRef = push(ref(db, `user_order/${userId}`));
+                                const itemId = userOrderRef.key;
+                                const itemToAdd = {
+                                    userId: userId,
+                                    itemId: itemId,
+                                    foodName: foodName,
+                                    price: price,
+                                    description: description,
+                                    imageURL: imageURL,
+                                    adminId: adminId, // Include adminId in the item details
+                                    quantity: 1 // Hardcoded for simplicity, you can change this as per your requirement
+                                };
+                                set(userOrderRef, itemToAdd)
+                                    .then(() => {
+                                        alert('Item added to cart!');
+                                    })
+                                    .catch(error => {
+                                        console.error('Error adding item to cart:', error);
+                                        alert('An error occurred. Please try again later.');
+                                    });
+                            } else {
+                                alert('Please sign in to add items to cart.');
+                            }
+                        });
+
+                        // Append elements to food item container
+                        foodItemDiv.appendChild(img);
+                        foodItemDiv.appendChild(nameHeading);
+                        foodItemDiv.appendChild(pricePara);
+                        foodItemDiv.appendChild(descButton);
+                        foodItemDiv.appendChild(addToCartButton);
+
+                        // Append food item container to content area
+                        content.appendChild(foodItemDiv);
+                    });
+                });
+            } 
+        } 
+
+        // Sign out function
+        const signOutButton = document.getElementById('sign-out');
+        signOutButton.addEventListener('click', () => {
+            signOut(auth).then(() => {
+                // Sign-out successful.
+                window.location.href = 'login.html'; // Redirect to login page
+            }).catch((error) => {
+                // An error happened.
+                console.error(error.message);
+            });
+        });
+
+        // Fetch food items from Firebase and display them
+        const foodItemsRef = ref(db, 'food_items');
+
+        onValue(foodItemsRef, (snapshot) => {
+            const foodItemsData = snapshot.val();
+
+            if (foodItemsData) {
+                displayFoodItems(foodItemsData);
+            } else {
+                console.log('No food items found.');
+            }
+        });
+    </script>
+</body>
+</html>
